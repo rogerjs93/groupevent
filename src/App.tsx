@@ -4,10 +4,11 @@ import EventList from './components/EventList';
 import SuggestEvent from './components/SuggestEvent';
 import UsernameModal from './components/UsernameModal';
 import { fetchEvents, fetchUsers, addEvent, updateEvent, addUser } from './utils/api';
-import { fetchTurkuActivities } from './utils/turkuApi';
+import { fetchTurkuActivities, startEventSync } from './utils/turkuEventsStream';
 
 function App() {
   const [events, setEvents] = useState<Event[]>([]);
+  const [externalEvents, setExternalEvents] = useState<Event[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [showSuggestModal, setShowSuggestModal] = useState(false);
@@ -22,6 +23,13 @@ function App() {
     if (savedUsername) {
       setCurrentUsername(savedUsername);
     }
+
+    // Start syncing Turku events every 6 hours
+    const cleanup = startEventSync((turkuEvents) => {
+      setExternalEvents(turkuEvents);
+    });
+
+    return cleanup; // Cleanup interval on unmount
   }, []);
 
   const loadData = async () => {
@@ -33,17 +41,8 @@ function App() {
         fetchTurkuActivities(),
       ]);
       
-      // Merge user events and Turku events
-      const allEvents = [...eventsData];
-      
-      // Add Turku events that don't already exist
-      turkuEvents.forEach(turkuEvent => {
-        if (!allEvents.find(e => e.id === turkuEvent.id)) {
-          allEvents.push(turkuEvent);
-        }
-      });
-      
-      setEvents(allEvents);
+      setEvents(eventsData);
+      setExternalEvents(turkuEvents);
       setUsers(usersData);
     } catch (error) {
       console.error('Error loading data:', error);
@@ -65,6 +64,14 @@ function App() {
 
   const handleUpdateEvent = async (updatedEvent: Event) => {
     try {
+      // Don't update external events in repo
+      if (updatedEvent.isExternal) {
+        setExternalEvents(prev =>
+          prev.map(e => (e.id === updatedEvent.id ? updatedEvent : e))
+        );
+        return;
+      }
+
       await updateEvent(updatedEvent);
       setEvents(events.map(e => e.id === updatedEvent.id ? updatedEvent : e));
     } catch (error) {
@@ -115,7 +122,7 @@ function App() {
               </div>
               <p className="text-sm text-gray-600 dark:text-gray-400 ml-14 flex items-center gap-2">
                 <span className="inline-block w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
-                Turku, Finland · Community Activities
+                Turku, Finland · {externalEvents.length} Live Events
               </p>
             </div>
             <div className="flex gap-3 animate-fade-in">
@@ -153,11 +160,43 @@ function App() {
             <p className="mt-4 text-white dark:text-gray-300 font-medium">Loading amazing events...</p>
           </div>
         ) : (
-          <EventList 
-            events={events} 
-            onUpdateEvent={handleUpdateEvent}
-            currentUsername={currentUsername}
-          />
+          <div className="space-y-12">
+            {/* External Events from Turku */}
+            {externalEvents.length > 0 && (
+              <div className="space-y-6 animate-fade-in">
+                <div className="flex items-center gap-3">
+                  <h2 className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+                    🌟 Happening in Turku
+                  </h2>
+                  <div className="px-3 py-1 bg-blue-500/20 border border-blue-500/30 rounded-full backdrop-blur-sm">
+                    <span className="text-xs font-medium text-blue-300">{externalEvents.length} events</span>
+                  </div>
+                </div>
+                <EventList 
+                  events={externalEvents} 
+                  onUpdateEvent={handleUpdateEvent}
+                  currentUsername={currentUsername}
+                />
+              </div>
+            )}
+
+            {/* User Suggested Events */}
+            <div className="space-y-6 animate-fade-in animation-delay-200">
+              <div className="flex items-center gap-3">
+                <h2 className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+                  👥 Community Events
+                </h2>
+                <div className="px-3 py-1 bg-purple-500/20 border border-purple-500/30 rounded-full backdrop-blur-sm">
+                  <span className="text-xs font-medium text-purple-300">{events.length} events</span>
+                </div>
+              </div>
+              <EventList 
+                events={events} 
+                onUpdateEvent={handleUpdateEvent}
+                currentUsername={currentUsername}
+              />
+            </div>
+          </div>
         )}
       </main>
 

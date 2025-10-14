@@ -137,20 +137,26 @@ export default function EventCard({ event, onUpdate }: EventCardProps) {
 
   return (
     <div className="group bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-300 overflow-hidden border border-purple-100 dark:border-purple-900/50 hover:border-purple-300 dark:hover:border-purple-700 transform hover:-translate-y-1 animate-scale-in">
+      {/* External Event Badge */}
+      {event.isExternal && (
+        <div className="absolute top-4 right-4 z-10">
+          <div className="px-3 py-1.5 rounded-full bg-blue-500/20 border border-blue-500/30 backdrop-blur-sm">
+            <span className="text-xs font-medium text-blue-600 dark:text-blue-400 flex items-center gap-1">
+              <span>✨</span> {event.source}
+            </span>
+          </div>
+        </div>
+      )}
+
       {/* Gradient top border */}
       <div className="h-1 bg-gradient-to-r from-purple-500 via-pink-500 to-purple-500"></div>
       
       {/* Header */}
       <div className="p-6">
         <div className="flex justify-between items-start mb-3">
-          <h3 className="text-xl font-bold text-gray-900 dark:text-white flex-1 group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors">
+          <h3 className="text-xl font-bold text-gray-900 dark:text-white flex-1 group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors pr-4">
             {event.title}
           </h3>
-          {event.source === 'turku-api' && (
-            <span className="ml-2 px-3 py-1 text-xs bg-gradient-to-r from-blue-500 to-cyan-500 text-white rounded-full shadow-md font-medium">
-              ✨ Turku
-            </span>
-          )}
         </div>
         
         <p className="text-gray-600 dark:text-gray-400 text-sm mb-4 leading-relaxed">
@@ -169,9 +175,10 @@ export default function EventCard({ event, onUpdate }: EventCardProps) {
             href={event.externalUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-1 text-purple-600 dark:text-purple-400 text-sm hover:text-purple-700 dark:hover:text-purple-300 font-medium transition-colors"
+            className="inline-flex items-center gap-2 text-sm text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300 font-medium transition-colors mb-4"
           >
-            Learn more <span className="text-xs">→</span>
+            <span>View Original Event</span>
+            <span className="transform group-hover:translate-x-1 transition-transform">→</span>
           </a>
         )}
       </div>

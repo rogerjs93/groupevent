@@ -1,7 +1,6 @@
 export interface TimeSlot {
-  time: 'morning' | 'afternoon' | 'evening' | 'night';
   votes: number;
-  specificTimes?: SpecificTime[];
+  specificTimes: { [time: string]: number };
 }
 
 export interface SpecificTime {
@@ -14,12 +13,18 @@ export interface Event {
   title: string;
   description: string;
   suggestedBy: string;
-  createdAt: string;
+  createdAt: number;
   interestedCount: number;
   notInterestedCount: number;
-  timeSlots: TimeSlot[];
-  source?: 'user' | 'turku-api';
+  timeSlots: {
+    morning: TimeSlot;
+    afternoon: TimeSlot;
+    evening: TimeSlot;
+    night: TimeSlot;
+  };
+  source?: string;
   externalUrl?: string;
+  isExternal?: boolean;
 }
 
 export interface User {
