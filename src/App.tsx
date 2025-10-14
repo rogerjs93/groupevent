@@ -3,7 +3,7 @@ import { Event, User } from './types';
 import EventList from './components/EventList';
 import SuggestEvent from './components/SuggestEvent';
 import UsernameModal from './components/UsernameModal';
-import { fetchEvents, fetchUsers, addEvent, updateEvent, addUser } from './utils/github';
+import { fetchEvents, fetchUsers, addEvent, updateEvent, addUser } from './utils/api';
 import { fetchTurkuActivities } from './utils/turkuApi';
 
 function App() {

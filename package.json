@@ -11,15 +11,16 @@
     "deploy": "gh-pages -d dist"
   },
   "dependencies": {
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0",
+    "@octokit/rest": "^20.0.2",
     "js-cookie": "^3.0.5",
-    "@octokit/rest": "^20.0.2"
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
   },
   "devDependencies": {
+    "@types/js-cookie": "^3.0.6",
     "@types/react": "^18.2.43",
     "@types/react-dom": "^18.2.17",
-    "@types/js-cookie": "^3.0.6",
+    "@vercel/node": "^5.3.26",
     "@vitejs/plugin-react": "^4.2.1",
     "autoprefixer": "^10.4.16",
     "gh-pages": "^6.1.0",
