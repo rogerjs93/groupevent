@@ -1,5 +1,4 @@
 import { Event } from '../types';
-import { initializeSpecificTimes } from './timeUtils';
 
 // This is a placeholder for Turku activity data API
 // You can integrate real APIs like:
@@ -48,34 +47,36 @@ export const fetchTurkuActivities = async (): Promise<Event[]> => {
       title: 'Art Exhibition at Turku Art Museum',
       description: 'Contemporary Finnish art showcase',
       suggestedBy: 'Turku Events',
-      createdAt: new Date().toISOString(),
+      createdAt: Date.now(),
       interestedCount: 0,
       notInterestedCount: 0,
-      timeSlots: [
-        { time: 'morning', votes: 0, specificTimes: initializeSpecificTimes('morning') },
-        { time: 'afternoon', votes: 0, specificTimes: initializeSpecificTimes('afternoon') },
-        { time: 'evening', votes: 0, specificTimes: initializeSpecificTimes('evening') },
-        { time: 'night', votes: 0, specificTimes: initializeSpecificTimes('night') },
-      ],
+      timeSlots: {
+        morning: { votes: 0, specificTimes: {} },
+        afternoon: { votes: 0, specificTimes: {} },
+        evening: { votes: 0, specificTimes: {} },
+        night: { votes: 0, specificTimes: {} },
+      },
       source: 'turku-api',
       externalUrl: 'https://turkuartmuseum.fi',
+      isExternal: true,
     },
     {
       id: 'turku-2',
       title: 'Market Square Food Festival',
       description: 'Local food vendors and live music',
       suggestedBy: 'Visit Turku',
-      createdAt: new Date().toISOString(),
+      createdAt: Date.now(),
       interestedCount: 0,
       notInterestedCount: 0,
-      timeSlots: [
-        { time: 'morning', votes: 0, specificTimes: initializeSpecificTimes('morning') },
-        { time: 'afternoon', votes: 0, specificTimes: initializeSpecificTimes('afternoon') },
-        { time: 'evening', votes: 0, specificTimes: initializeSpecificTimes('evening') },
-        { time: 'night', votes: 0, specificTimes: initializeSpecificTimes('night') },
-      ],
+      timeSlots: {
+        morning: { votes: 0, specificTimes: {} },
+        afternoon: { votes: 0, specificTimes: {} },
+        evening: { votes: 0, specificTimes: {} },
+        night: { votes: 0, specificTimes: {} },
+      },
       source: 'turku-api',
       externalUrl: 'https://visitturku.fi',
+      isExternal: true,
     },
   ];
 
