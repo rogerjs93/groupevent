@@ -9,7 +9,6 @@
   "installCommand": "npm install",
   "framework": "vite",
   "outputDirectory": "dist",
-  "nodeVersion": "22.x",
   "rewrites": [
     {
       "source": "/api/(.*)",
