@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { Event, TimeSlot, SpecificTime } from '../types';
+import { Event } from '../types';
 import { hasVoted, addVote, getVoteForEvent } from '../utils/cookies';
-import { initializeSpecificTimes, formatTime } from '../utils/timeUtils';
+import { formatTime } from '../utils/timeUtils';
 
 interface EventCardProps {
   event: Event;
@@ -9,15 +9,19 @@ interface EventCardProps {
   currentUsername: string;
 }
 
+type TimeSlotKey = 'morning' | 'afternoon' | 'evening' | 'night';
+
 export default function EventCard({ event, onUpdate }: EventCardProps) {
   const [showTimeSlots, setShowTimeSlots] = useState(false);
-  const [selectedTimeSlot, setSelectedTimeSlot] = useState<TimeSlot | null>(null);
+  const [selectedTimeSlotKey, setSelectedTimeSlotKey] = useState<TimeSlotKey | null>(null);
   const [showSpecificTimes, setShowSpecificTimes] = useState(false);
   const voted = hasVoted(event.id);
   const existingVote = getVoteForEvent(event.id);
 
-  const handleVote = (interested: boolean, timeSlot?: TimeSlot) => {
-    if (voted && !timeSlot) {
+  const timeSlotKeys: TimeSlotKey[] = ['morning', 'afternoon', 'evening', 'night'];
+
+  const handleVote = (interested: boolean, timeSlotKey?: TimeSlotKey) => {
+    if (voted && !timeSlotKey) {
       alert('You have already voted on this event!');
       return;
     }
@@ -38,7 +42,7 @@ export default function EventCard({ event, onUpdate }: EventCardProps) {
       return;
     }
 
-    if (interested && !timeSlot) {
+    if (interested && !timeSlotKey) {
       // First step: show time slots
       const updatedEvent = { ...event };
       if (!existingVote) {
@@ -55,41 +59,25 @@ export default function EventCard({ event, onUpdate }: EventCardProps) {
       return;
     }
 
-    if (interested && timeSlot) {
+    if (interested && timeSlotKey) {
       // Second step: user selected a time slot, now show specific times
-      setSelectedTimeSlot(timeSlot);
+      const updatedEvent = { ...event };
+      updatedEvent.timeSlots[timeSlotKey].votes += 1;
       
-      // Initialize specific times if not already present
-      if (!timeSlot.specificTimes || timeSlot.specificTimes.length === 0) {
-        const updatedEvent = { ...event };
-        updatedEvent.timeSlots = updatedEvent.timeSlots.map(slot => {
-          if (slot.time === timeSlot.time) {
-            return {
-              ...slot,
-              specificTimes: initializeSpecificTimes(slot.time),
-              votes: slot.votes + 1,
-            };
-          }
-          return slot;
-        });
-        onUpdate(updatedEvent);
-      } else {
-        // Just update the vote count for the time slot
-        const updatedEvent = { ...event };
-        updatedEvent.timeSlots = updatedEvent.timeSlots.map(slot =>
-          slot.time === timeSlot.time
-            ? { ...slot, votes: slot.votes + 1 }
-            : slot
-        );
-        onUpdate(updatedEvent);
-      }
-      
+      addVote({
+        eventId: event.id,
+        interested: true,
+        timeSlot: timeSlotKey,
+      });
+
+      setSelectedTimeSlotKey(timeSlotKey);
+      onUpdate(updatedEvent);
       setShowSpecificTimes(true);
     }
   };
 
-  const handleSpecificTimeVote = (specificTime: SpecificTime) => {
-    if (existingVote?.specificTime) {
+  const handleSpecificTimeVote = (time: string) => {
+    if (existingVote?.specificTime || !selectedTimeSlotKey) {
       alert('You have already selected a specific time!');
       return;
     }
@@ -97,26 +85,17 @@ export default function EventCard({ event, onUpdate }: EventCardProps) {
     const updatedEvent = { ...event };
     
     // Update the specific time vote
-    updatedEvent.timeSlots = updatedEvent.timeSlots.map(slot => {
-      if (slot.time === selectedTimeSlot?.time && slot.specificTimes) {
-        return {
-          ...slot,
-          specificTimes: slot.specificTimes.map(st =>
-            st.time === specificTime.time
-              ? { ...st, votes: st.votes + 1 }
-              : st
-          ),
-        };
-      }
-      return slot;
-    });
+    if (!updatedEvent.timeSlots[selectedTimeSlotKey].specificTimes[time]) {
+      updatedEvent.timeSlots[selectedTimeSlotKey].specificTimes[time] = 0;
+    }
+    updatedEvent.timeSlots[selectedTimeSlotKey].specificTimes[time] += 1;
 
     // Save the complete vote
     addVote({
       eventId: event.id,
       interested: true,
-      timeSlot: selectedTimeSlot?.time,
-      specificTime: specificTime.time,
+      timeSlot: selectedTimeSlotKey,
+      specificTime: time,
     });
 
     onUpdate(updatedEvent);
@@ -128,11 +107,48 @@ export default function EventCard({ event, onUpdate }: EventCardProps) {
     ? Math.round((event.interestedCount / totalVotes) * 100) 
     : 0;
 
-  const timeLabels: Record<string, string> = {
+  const timeLabels: Record<TimeSlotKey, string> = {
     morning: '🌅 Morning',
     afternoon: '☀️ Afternoon',
     evening: '🌆 Evening',
     night: '🌙 Night',
+  };
+
+  const timeRanges: Record<TimeSlotKey, string> = {
+    morning: '6:00 - 12:00',
+    afternoon: '12:00 - 18:00',
+    evening: '18:00 - 00:00',
+    night: '00:00 - 6:00',
+  };
+
+  // Get available specific times for a time slot
+  const getSpecificTimes = (slotKey: TimeSlotKey): string[] => {
+    const ranges: Record<TimeSlotKey, [number, number]> = {
+      morning: [6, 12],
+      afternoon: [12, 18],
+      evening: [18, 24],
+      night: [0, 6],
+    };
+
+    const [start, end] = ranges[slotKey];
+    const times: string[] = [];
+
+    for (let hour = start; hour < end; hour++) {
+      times.push(`${hour.toString().padStart(2, '0')}:00`);
+      times.push(`${hour.toString().padStart(2, '0')}:30`);
+    }
+
+    return times;
+  };
+
+  // Get top 3 times for a slot
+  const getTopTimes = (slotKey: TimeSlotKey) => {
+    const times = event.timeSlots[slotKey].specificTimes;
+    return Object.entries(times)
+      .filter(([_, votes]) => votes > 0)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 3)
+      .map(([time, votes]) => ({ time, votes }));
   };
 
   return (
@@ -169,6 +185,46 @@ export default function EventCard({ event, onUpdate }: EventCardProps) {
             Suggested by: <span className="font-semibold text-gray-700 dark:text-gray-300">{event.suggestedBy}</span>
           </span>
         </div>
+
+        {/* Show creator's suggested date and time */}
+        {(event.eventDate || event.suggestedTime || event.suggestedTimeSlot) && (
+          <div className="bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 rounded-xl p-3 mb-4 border border-purple-200 dark:border-purple-800">
+            <div className="flex items-center gap-2 text-xs font-semibold text-purple-700 dark:text-purple-300 mb-2">
+              <span>💡</span> Creator's Suggestion:
+            </div>
+            <div className="space-y-1 text-sm">
+              {event.eventDate && (
+                <div className="flex items-center gap-2">
+                  <span className="text-gray-600 dark:text-gray-400">📅</span>
+                  <span className="font-medium text-gray-800 dark:text-gray-200">
+                    {new Date(event.eventDate).toLocaleDateString('en-US', { 
+                      weekday: 'short', 
+                      year: 'numeric', 
+                      month: 'short', 
+                      day: 'numeric' 
+                    })}
+                  </span>
+                </div>
+              )}
+              {event.suggestedTimeSlot && (
+                <div className="flex items-center gap-2">
+                  <span className="text-gray-600 dark:text-gray-400">🌅</span>
+                  <span className="font-medium text-gray-800 dark:text-gray-200 capitalize">
+                    {event.suggestedTimeSlot} ({timeRanges[event.suggestedTimeSlot]})
+                  </span>
+                </div>
+              )}
+              {event.suggestedTime && (
+                <div className="flex items-center gap-2">
+                  <span className="text-gray-600 dark:text-gray-400">⏰</span>
+                  <span className="font-medium text-gray-800 dark:text-gray-200">
+                    {event.suggestedTime}
+                  </span>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         {event.externalUrl && (
           <a
@@ -241,21 +297,21 @@ export default function EventCard({ event, onUpdate }: EventCardProps) {
             <span className="text-lg">🕐</span> Preferred Time Slot:
           </h4>
           <div className="grid grid-cols-2 gap-3">
-            {event.timeSlots.map(slot => (
+            {timeSlotKeys.map(slotKey => (
               <button
-                key={slot.time}
-                onClick={() => !existingVote?.timeSlot && handleVote(true, slot)}
+                key={slotKey}
+                onClick={() => !existingVote?.timeSlot && handleVote(true, slotKey)}
                 disabled={!!existingVote?.timeSlot}
                 className={`px-4 py-3 text-sm rounded-xl transition-all duration-200 font-semibold shadow-md ${
-                  existingVote?.timeSlot === slot.time
+                  existingVote?.timeSlot === slotKey
                     ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg scale-105'
                     : 'bg-white dark:bg-slate-800 text-gray-700 dark:text-gray-300 hover:bg-purple-100 dark:hover:bg-purple-900/50 hover:shadow-lg transform hover:scale-105'
                 } ${existingVote?.timeSlot ? 'cursor-not-allowed opacity-60' : ''}`}
               >
                 <div className="flex flex-col items-center gap-1">
-                  <span>{timeLabels[slot.time]}</span>
+                  <span>{timeLabels[slotKey]}</span>
                   <div className="text-xs opacity-80 flex items-center gap-1">
-                    <span>📊</span> {slot.votes} votes
+                    <span>📊</span> {event.timeSlots[slotKey].votes} votes
                   </div>
                 </div>
               </button>
@@ -265,22 +321,25 @@ export default function EventCard({ event, onUpdate }: EventCardProps) {
       )}
 
       {/* Specific Time Selection */}
-      {showSpecificTimes && selectedTimeSlot && (
+      {showSpecificTimes && selectedTimeSlotKey && (
         <div className="bg-gradient-to-br from-violet-50 to-purple-50 dark:from-slate-900/50 dark:to-violet-900/30 px-6 py-5 border-t border-violet-100 dark:border-violet-900/50 animate-slide-up">
           <h4 className="text-sm font-bold text-gray-800 dark:text-gray-200 mb-4 flex items-center gap-2">
-            <span className="text-lg">⏰</span> Select Specific Time ({timeLabels[selectedTimeSlot.time]}):
+            <span className="text-lg">⏰</span> Select Specific Time ({timeLabels[selectedTimeSlotKey]}):
           </h4>
           <div className="grid grid-cols-3 gap-2 max-h-72 overflow-y-auto pr-2 custom-scrollbar">
-            {selectedTimeSlot.specificTimes?.map(specificTime => (
-              <button
-                key={specificTime.time}
-                onClick={() => handleSpecificTimeVote(specificTime)}
-                className="px-3 py-2.5 text-sm rounded-lg bg-white dark:bg-slate-800 text-gray-700 dark:text-gray-300 hover:bg-gradient-to-r hover:from-purple-500 hover:to-pink-500 hover:text-white transition-all duration-200 shadow-md hover:shadow-lg transform hover:scale-105 font-medium"
-              >
-                <div className="font-bold">{formatTime(specificTime.time)}</div>
-                <div className="text-xs opacity-75 mt-0.5">{specificTime.votes} 📊</div>
-              </button>
-            ))}
+            {getSpecificTimes(selectedTimeSlotKey).map(time => {
+              const votes = event.timeSlots[selectedTimeSlotKey].specificTimes[time] || 0;
+              return (
+                <button
+                  key={time}
+                  onClick={() => handleSpecificTimeVote(time)}
+                  className="px-3 py-2.5 text-sm rounded-lg bg-white dark:bg-slate-800 text-gray-700 dark:text-gray-300 hover:bg-gradient-to-r hover:from-purple-500 hover:to-pink-500 hover:text-white transition-all duration-200 shadow-md hover:shadow-lg transform hover:scale-105 font-medium"
+                >
+                  <div className="font-bold">{formatTime(time)}</div>
+                  <div className="text-xs opacity-75 mt-0.5">{votes} 📊</div>
+                </button>
+              );
+            })}
           </div>
         </div>
       )}
@@ -295,7 +354,7 @@ export default function EventCard({ event, onUpdate }: EventCardProps) {
             <div className="flex items-center gap-3 text-sm bg-white dark:bg-slate-800 rounded-lg p-3 shadow-md">
               <span className="text-gray-600 dark:text-gray-400 font-medium">Time Slot:</span>
               <span className="font-bold text-purple-600 dark:text-purple-400">
-                {timeLabels[existingVote.timeSlot as keyof typeof timeLabels]}
+                {timeLabels[existingVote.timeSlot as TimeSlotKey]}
               </span>
             </div>
             {existingVote.specificTime && (
@@ -310,21 +369,17 @@ export default function EventCard({ event, onUpdate }: EventCardProps) {
 
           {/* Show popular times for this slot */}
           {existingVote.timeSlot && (() => {
-            const slot = event.timeSlots.find(s => s.time === existingVote.timeSlot);
-            const topTimes = slot?.specificTimes
-              ?.filter(st => st.votes > 0)
-              .sort((a, b) => b.votes - a.votes)
-              .slice(0, 3);
+            const topTimes = getTopTimes(existingVote.timeSlot as TimeSlotKey);
             
-            return topTimes && topTimes.length > 0 ? (
+            return topTimes.length > 0 ? (
               <div className="mt-4">
                 <h5 className="text-xs font-bold text-gray-700 dark:text-gray-400 mb-3 flex items-center gap-2">
                   <span>🌟</span> Most Popular Times:
                 </h5>
                 <div className="flex gap-2 flex-wrap">
-                  {topTimes.map((st, index) => (
+                  {topTimes.map((item, index) => (
                     <div
-                      key={st.time}
+                      key={item.time}
                       className={`px-3 py-2 rounded-lg text-xs font-semibold shadow-md ${
                         index === 0
                           ? 'bg-gradient-to-r from-yellow-400 to-orange-400 text-white'
@@ -337,8 +392,8 @@ export default function EventCard({ event, onUpdate }: EventCardProps) {
                         {index === 0 && <span>🥇</span>}
                         {index === 1 && <span>🥈</span>}
                         {index === 2 && <span>🥉</span>}
-                        <span>{formatTime(st.time)}</span>
-                        <span className="opacity-80">({st.votes})</span>
+                        <span>{formatTime(item.time)}</span>
+                        <span className="opacity-80">({item.votes})</span>
                       </div>
                     </div>
                   ))}
