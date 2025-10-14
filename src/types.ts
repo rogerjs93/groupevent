@@ -25,6 +25,9 @@ export interface Event {
   source?: string;
   externalUrl?: string;
   isExternal?: boolean;
+  eventDate?: number; // Timestamp of the event date
+  suggestedTime?: string; // Creator's preferred time (e.g., "18:00")
+  suggestedTimeSlot?: 'morning' | 'afternoon' | 'evening' | 'night'; // Creator's preferred time slot
 }
 
 export interface User {
