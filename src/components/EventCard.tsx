@@ -9,7 +9,7 @@ interface EventCardProps {
   currentUsername: string;
 }
 
-export default function EventCard({ event, onUpdate, currentUsername }: EventCardProps) {
+export default function EventCard({ event, onUpdate }: EventCardProps) {
   const [showTimeSlots, setShowTimeSlots] = useState(false);
   const [selectedTimeSlot, setSelectedTimeSlot] = useState<TimeSlot | null>(null);
   const [showSpecificTimes, setShowSpecificTimes] = useState(false);

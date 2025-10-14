@@ -23,7 +23,7 @@ const getFileContent = async (path: string): Promise<any> => {
     });
 
     if ('content' in data) {
-      const content = Buffer.from(data.content, 'base64').toString('utf-8');
+      const content = atob(data.content);
       return { content: JSON.parse(content), sha: data.sha };
     }
     return { content: [], sha: '' };
@@ -38,7 +38,7 @@ const getFileContent = async (path: string): Promise<any> => {
 // Helper to update file
 const updateFile = async (path: string, content: any, sha: string): Promise<void> => {
   const message = `Update ${path}`;
-  const contentEncoded = Buffer.from(JSON.stringify(content, null, 2)).toString('base64');
+  const contentEncoded = btoa(JSON.stringify(content, null, 2));
 
   if (sha) {
     // Update existing file
