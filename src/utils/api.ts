@@ -49,6 +49,13 @@ export const updateEvent = async (updatedEvent: Event): Promise<void> => {
   });
 };
 
+export const deleteEvent = async (eventId: string): Promise<void> => {
+  await apiRequest(EVENTS_ENDPOINT, {
+    method: 'DELETE',
+    body: JSON.stringify({ eventId }),
+  });
+};
+
 // Users API
 export const fetchUsers = async (): Promise<User[]> => {
   try {

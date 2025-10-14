@@ -4,10 +4,11 @@ import EventCard from './EventCard';
 interface EventListProps {
   events: Event[];
   onUpdateEvent: (event: Event) => void;
+  onDeleteEvent: (eventId: string) => void;
   currentUsername: string;
 }
 
-export default function EventList({ events, onUpdateEvent, currentUsername }: EventListProps) {
+export default function EventList({ events, onUpdateEvent, onDeleteEvent, currentUsername }: EventListProps) {
   if (events.length === 0) {
     return (
       <div className="text-center py-20 animate-fade-in">
@@ -35,6 +36,7 @@ export default function EventList({ events, onUpdateEvent, currentUsername }: Ev
           <EventCard
             event={event}
             onUpdate={onUpdateEvent}
+            onDelete={onDeleteEvent}
             currentUsername={currentUsername}
           />
         </div>

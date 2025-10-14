@@ -3,7 +3,7 @@ import { Event, User } from './types';
 import EventList from './components/EventList';
 import SuggestEvent from './components/SuggestEvent';
 import UsernameModal from './components/UsernameModal';
-import { fetchEvents, fetchUsers, addEvent, updateEvent, addUser } from './utils/api';
+import { fetchEvents, fetchUsers, addEvent, updateEvent, deleteEvent, addUser } from './utils/api';
 import { fetchTurkuActivities, startEventSync } from './utils/turkuEventsStream';
 
 function App() {
@@ -80,7 +80,21 @@ function App() {
     }
   };
 
-  const handleSetUsername = async (username: string) => {
+  const handleDeleteEvent = async (eventId: string) => {
+    if (!confirm('Are you sure you want to delete this event? This action cannot be undone.')) {
+      return;
+    }
+
+    try {
+      await deleteEvent(eventId);
+      setEvents(events.filter(e => e.id !== eventId));
+    } catch (error) {
+      console.error('Error deleting event:', error);
+      alert('Failed to delete event. Please try again.');
+    }
+  };
+
+  const handleSetUsername = async (username: string) {
     const newUser: User = {
       username,
       createdAt: new Date().toISOString(),
@@ -175,6 +189,7 @@ function App() {
                 <EventList 
                   events={externalEvents} 
                   onUpdateEvent={handleUpdateEvent}
+                  onDeleteEvent={handleDeleteEvent}
                   currentUsername={currentUsername}
                 />
               </div>
@@ -193,6 +208,7 @@ function App() {
               <EventList 
                 events={events} 
                 onUpdateEvent={handleUpdateEvent}
+                onDeleteEvent={handleDeleteEvent}
                 currentUsername={currentUsername}
               />
             </div>
