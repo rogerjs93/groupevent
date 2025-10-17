@@ -31,7 +31,7 @@ function App() {
       setExternalEvents(turkuEvents);
     });
 
-    // Poll for event updates every 10 seconds (increased to reduce interruption)
+    // Poll for event updates every 60 seconds (1 minute)
     // Only poll when user is not actively interacting
     const pollInterval = setInterval(() => {
       if (!isUserInteracting) {
@@ -45,7 +45,7 @@ function App() {
           console.error('Error polling events:', error);
         });
       }
-    }, 10000); // Poll every 10 seconds (less frequent to reduce interruption)
+    }, 60000); // Poll every 60 seconds (1 minute)
 
     // Detect user interaction to pause polling
     let interactionTimeout: NodeJS.Timeout;

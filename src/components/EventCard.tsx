@@ -62,7 +62,15 @@ export default function EventCard({ event, onUpdate, onDelete, currentUsername }
 
     if (interested && timeSlotKey) {
       // Second step: user selected a time slot, now show specific times
-      const updatedEvent = { ...event };
+      const updatedEvent = {
+        ...event,
+        timeSlots: {
+          morning: { ...event.timeSlots.morning, specificTimes: { ...event.timeSlots.morning.specificTimes } },
+          afternoon: { ...event.timeSlots.afternoon, specificTimes: { ...event.timeSlots.afternoon.specificTimes } },
+          evening: { ...event.timeSlots.evening, specificTimes: { ...event.timeSlots.evening.specificTimes } },
+          night: { ...event.timeSlots.night, specificTimes: { ...event.timeSlots.night.specificTimes } },
+        }
+      };
       updatedEvent.timeSlots[timeSlotKey].votes += 1;
       
       addVote({
@@ -83,7 +91,16 @@ export default function EventCard({ event, onUpdate, onDelete, currentUsername }
       return;
     }
 
-    const updatedEvent = { ...event };
+    // Deep copy the event to avoid mutation
+    const updatedEvent = {
+      ...event,
+      timeSlots: {
+        morning: { ...event.timeSlots.morning, specificTimes: { ...event.timeSlots.morning.specificTimes } },
+        afternoon: { ...event.timeSlots.afternoon, specificTimes: { ...event.timeSlots.afternoon.specificTimes } },
+        evening: { ...event.timeSlots.evening, specificTimes: { ...event.timeSlots.evening.specificTimes } },
+        night: { ...event.timeSlots.night, specificTimes: { ...event.timeSlots.night.specificTimes } },
+      }
+    };
     
     // Update the specific time vote
     if (!updatedEvent.timeSlots[selectedTimeSlotKey].specificTimes[time]) {
