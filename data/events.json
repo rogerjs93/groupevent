@@ -32,5 +32,35 @@
     "eventDate": 1761339600000,
     "suggestedTime": "18:00",
     "suggestedTimeSlot": "morning"
+  },
+  {
+    "id": "user-1760698087110",
+    "title": "test event2",
+    "description": "test event 2",
+    "suggestedBy": "SpikeTransmitterAlpha",
+    "createdAt": 1760698087110,
+    "interestedCount": 0,
+    "notInterestedCount": 0,
+    "timeSlots": {
+      "morning": {
+        "votes": 0,
+        "specificTimes": {}
+      },
+      "afternoon": {
+        "votes": 0,
+        "specificTimes": {}
+      },
+      "evening": {
+        "votes": 0,
+        "specificTimes": {}
+      },
+      "night": {
+        "votes": 0,
+        "specificTimes": {}
+      }
+    },
+    "eventDate": 1760698072974,
+    "suggestedTime": "18:00",
+    "suggestedTimeSlot": "night"
   }
 ]
