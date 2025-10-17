@@ -30,14 +30,18 @@ function App() {
       setExternalEvents(turkuEvents);
     });
 
-    // Poll for event updates every 10 seconds to show votes and new events
+    // Poll for event updates every 5 seconds to show votes and new events
     const pollInterval = setInterval(() => {
-      fetchEvents().then((eventsData) => {
+      Promise.all([
+        fetchEvents(),
+        fetchTurkuActivities()
+      ]).then(([eventsData, turkuEvents]) => {
         setEvents(eventsData);
+        setExternalEvents(turkuEvents);
       }).catch((error) => {
         console.error('Error polling events:', error);
       });
-    }, 10000); // Poll every 10 seconds
+    }, 5000); // Poll every 5 seconds for better real-time updates
 
     return () => {
       turkuCleanup(); // Cleanup Turku events interval
@@ -85,11 +89,21 @@ function App() {
         return;
       }
 
+      // Optimistically update the UI
+      setEvents(prev => prev.map(e => e.id === updatedEvent.id ? updatedEvent : e));
+      
+      // Then update on server
       await updateEvent(updatedEvent);
-      setEvents(events.map(e => e.id === updatedEvent.id ? updatedEvent : e));
+      
+      // Fetch fresh data to ensure consistency
+      const freshEvents = await fetchEvents();
+      setEvents(freshEvents);
     } catch (error) {
       console.error('Error updating event:', error);
       alert('Failed to update event. Please try again.');
+      // Revert to fresh data on error
+      const freshEvents = await fetchEvents();
+      setEvents(freshEvents);
     }
   };
 
@@ -273,11 +287,11 @@ function App() {
                     {upcoming.length > 0 && (
                       <div className="space-y-6">
                         <div className="flex items-center gap-3">
-                          <h2 className="text-3xl font-bold bg-gradient-to-r from-blue-500 to-purple-500 bg-clip-text text-transparent">
+                          <h2 className="text-3xl font-bold bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent">
                             📅 Upcoming Events
                           </h2>
-                          <div className="px-3 py-1 bg-blue-500/20 border border-blue-500/30 rounded-full backdrop-blur-sm">
-                            <span className="text-xs font-medium text-blue-300">{upcoming.length} events</span>
+                          <div className="px-3 py-1 bg-cyan-500/20 border border-cyan-500/30 rounded-full backdrop-blur-sm">
+                            <span className="text-xs font-medium text-cyan-300">{upcoming.length} events</span>
                           </div>
                         </div>
                         <EventList 
