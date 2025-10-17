@@ -15,6 +15,7 @@ function App() {
   const [showUsernameModal, setShowUsernameModal] = useState(false);
   const [currentUsername, setCurrentUsername] = useState<string>('');
   const [showPastEvents, setShowPastEvents] = useState(false);
+  const [isUserInteracting, setIsUserInteracting] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -30,24 +31,47 @@ function App() {
       setExternalEvents(turkuEvents);
     });
 
-    // Poll for event updates every 5 seconds to show votes and new events
+    // Poll for event updates every 10 seconds (increased to reduce interruption)
+    // Only poll when user is not actively interacting
     const pollInterval = setInterval(() => {
-      Promise.all([
-        fetchEvents(),
-        fetchTurkuActivities()
-      ]).then(([eventsData, turkuEvents]) => {
-        setEvents(eventsData);
-        setExternalEvents(turkuEvents);
-      }).catch((error) => {
-        console.error('Error polling events:', error);
-      });
-    }, 5000); // Poll every 5 seconds for better real-time updates
+      if (!isUserInteracting) {
+        Promise.all([
+          fetchEvents(),
+          fetchTurkuActivities()
+        ]).then(([eventsData, turkuEvents]) => {
+          setEvents(eventsData);
+          setExternalEvents(turkuEvents);
+        }).catch((error) => {
+          console.error('Error polling events:', error);
+        });
+      }
+    }, 10000); // Poll every 10 seconds (less frequent to reduce interruption)
+
+    // Detect user interaction to pause polling
+    let interactionTimeout: NodeJS.Timeout;
+    const handleUserInteraction = () => {
+      setIsUserInteracting(true);
+      clearTimeout(interactionTimeout);
+      // Resume polling after 3 seconds of no interaction
+      interactionTimeout = setTimeout(() => {
+        setIsUserInteracting(false);
+      }, 3000);
+    };
+
+    // Listen for mouse and touch events
+    window.addEventListener('mousedown', handleUserInteraction);
+    window.addEventListener('touchstart', handleUserInteraction);
+    window.addEventListener('click', handleUserInteraction);
 
     return () => {
       turkuCleanup(); // Cleanup Turku events interval
       clearInterval(pollInterval); // Cleanup polling interval
+      clearTimeout(interactionTimeout);
+      window.removeEventListener('mousedown', handleUserInteraction);
+      window.removeEventListener('touchstart', handleUserInteraction);
+      window.removeEventListener('click', handleUserInteraction);
     };
-  }, []);
+  }, [isUserInteracting]);
 
   const loadData = async () => {
     setLoading(true);
@@ -89,31 +113,22 @@ function App() {
         return;
       }
 
-      // Optimistically update the UI immediately
-      setEvents(prev => prev.map(e => e.id === updatedEvent.id ? updatedEvent : e));
-      
-      // Update on server
+      // Update on server first (no optimistic update to avoid conflicts)
       await updateEvent(updatedEvent);
       
-      // Wait a moment for GitHub to process, then fetch fresh data
-      setTimeout(async () => {
-        try {
-          const freshEvents = await fetchEvents();
-          setEvents(freshEvents);
-        } catch (error) {
-          console.error('Error fetching fresh events:', error);
-        }
-      }, 1000); // Wait 1 second before fetching to allow server processing
+      // Immediately fetch fresh data after successful update
+      const freshEvents = await fetchEvents();
+      setEvents(freshEvents);
       
     } catch (error) {
       console.error('Error updating event:', error);
       alert('Failed to update event. Please try again.');
-      // Revert to fresh data on error
+      // Fetch fresh data on error to ensure consistency
       try {
         const freshEvents = await fetchEvents();
         setEvents(freshEvents);
       } catch (fetchError) {
-        console.error('Error reverting to fresh data:', fetchError);
+        console.error('Error fetching fresh data:', fetchError);
       }
     }
   };
