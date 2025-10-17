@@ -17,21 +17,22 @@ interface ExternalEvent {
 }
 
 // Convert external event to our Event format
-function convertToAppEvent(externalEvent: ExternalEvent, source: string): Event {
+function convertToAppEvent(externalEvent: ExternalEvent, source: string, city: string): Event {
   const now = Date.now();
-  const title = externalEvent.name?.en || externalEvent.name?.fi || 'Turku Event';
+  const title = externalEvent.name?.en || externalEvent.name?.fi || 'Event';
   const description = 
     externalEvent.description?.intro || 
     externalEvent.description?.body || 
     externalEvent.description?.en || 
     externalEvent.description?.fi || 
-    'Event happening in Turku';
+    'Event happening in Finland';
   
   return {
     id: `external-${source}-${externalEvent.id || now}`,
     title: title.substring(0, 100), // Limit title length
     description: description.substring(0, 300), // Limit description length
     suggestedBy: source,
+    city: city, // Add city information
     timeSlots: {
       morning: { votes: 0, specificTimes: {} },
       afternoon: { votes: 0, specificTimes: {} },
@@ -57,8 +58,8 @@ export const SUPPORTED_CITIES = [
   { id: 'vantaa', name: 'Vantaa', aliases: ['vantaa', 'vanda'] },
 ];
 
-// Fetch events from MyHelsinki API with city filter
-async function fetchMyHelsinkiEvents(cityFilter?: string): Promise<Event[]> {
+// Fetch events from MyHelsinki API - gets events from all Finnish cities
+async function fetchMyHelsinkiEvents(): Promise<Event[]> {
   try {
     const response = await fetch(
       'https://open-api.myhelsinki.fi/v1/events/?limit=100'
@@ -71,13 +72,16 @@ async function fetchMyHelsinkiEvents(cityFilter?: string): Promise<Event[]> {
     
     const data = await response.json();
     
-    // Get city aliases for filtering
-    const selectedCity = SUPPORTED_CITIES.find(c => c.id === cityFilter);
-    const cityAliases = selectedCity?.aliases || ['turku', 'åbo']; // Default to Turku
+    // Define type for events with city info
+    interface EventWithCity {
+      event: ExternalEvent;
+      city: string;
+      isTurku: boolean;
+    }
     
-    return (data.data || [])
-      .filter((event: ExternalEvent) => {
-        // Filter for city-related events
+    // Process all events and detect their city
+    const eventsWithCity: EventWithCity[] = (data.data || [])
+      .map((event: ExternalEvent): EventWithCity => {
         const name = (event.name?.fi || event.name?.en || '').toLowerCase();
         const desc = (
           event.description?.intro || 
@@ -89,16 +93,45 @@ async function fetchMyHelsinkiEvents(cityFilter?: string): Promise<Event[]> {
         const location = (event.location?.address?.locality || '').toLowerCase();
         const tags = (event.tags || []).map(t => (t.name || '').toLowerCase()).join(' ');
         
-        // Check if any city alias matches
-        return cityAliases.some(alias => 
-          name.includes(alias) || 
-          desc.includes(alias) || 
-          location.includes(alias) ||
-          tags.includes(alias)
-        );
-      })
-      .slice(0, 15) // Limit to 15 events
-      .map((event: ExternalEvent) => convertToAppEvent(event, `MyHelsinki-${selectedCity?.name || 'Turku'}`));
+        // Detect which city the event belongs to
+        let detectedCity = 'Helsinki'; // Default to Helsinki
+        let isTurku = false;
+        
+        for (const cityInfo of SUPPORTED_CITIES) {
+          const cityMatch = cityInfo.aliases.some(alias => 
+            name.includes(alias) || 
+            desc.includes(alias) || 
+            location.includes(alias) ||
+            tags.includes(alias)
+          );
+          
+          if (cityMatch) {
+            detectedCity = cityInfo.name;
+            if (cityInfo.id === 'turku') {
+              isTurku = true;
+            }
+            break;
+          }
+        }
+        
+        return {
+          event,
+          city: detectedCity,
+          isTurku
+        };
+      });
+    
+    // Sort: Turku events first, then others
+    const sorted = eventsWithCity.sort((a, b) => {
+      if (a.isTurku && !b.isTurku) return -1;
+      if (!a.isTurku && b.isTurku) return 1;
+      return 0;
+    });
+    
+    // Take top 20 events (prioritizing Turku)
+    return sorted
+      .slice(0, 20)
+      .map(({ event, city }) => convertToAppEvent(event, 'MyHelsinki', city));
   } catch (error) {
     console.error('Error fetching MyHelsinki events:', error);
     return [];
@@ -114,6 +147,7 @@ async function fetchTurkuCityEvents(): Promise<Event[]> {
         title: '🏛️ Turku Market Square Events',
         description: 'Weekly happenings at the historic Turku Market Square - fresh produce, local crafts, and seasonal activities',
         suggestedBy: 'Turku.fi',
+        city: 'Turku',
         timeSlots: {
           morning: { votes: 0, specificTimes: {} },
           afternoon: { votes: 0, specificTimes: {} },
@@ -132,6 +166,7 @@ async function fetchTurkuCityEvents(): Promise<Event[]> {
         title: '🏰 Turku Castle Tours',
         description: 'Explore the medieval Turku Castle, one of Finland\'s most significant historical monuments',
         suggestedBy: 'Turku.fi',
+        city: 'Turku',
         timeSlots: {
           morning: { votes: 0, specificTimes: {} },
           afternoon: { votes: 0, specificTimes: {} },
@@ -163,6 +198,7 @@ async function fetchVisitTurkuEvents(): Promise<Event[]> {
         title: '⛵ Turku Archipelago Tour',
         description: 'Explore the stunning Turku archipelago by boat. Experience the unique island culture and beautiful Finnish nature.',
         suggestedBy: 'Visit Turku',
+        city: 'Turku',
         timeSlots: {
           morning: { votes: 0, specificTimes: {} },
           afternoon: { votes: 0, specificTimes: {} },
@@ -181,6 +217,7 @@ async function fetchVisitTurkuEvents(): Promise<Event[]> {
         title: '⛪ Turku Cathedral Visit',
         description: 'Visit the Mother Church of Finland, a stunning example of Finnish medieval architecture dating back to the 13th century.',
         suggestedBy: 'Visit Turku',
+        city: 'Turku',
         timeSlots: {
           morning: { votes: 0, specificTimes: {} },
           afternoon: { votes: 0, specificTimes: {} },
@@ -203,19 +240,16 @@ async function fetchVisitTurkuEvents(): Promise<Event[]> {
   }
 }
 
-// Main function to fetch activities with city filter
-export async function fetchTurkuActivities(cityFilter: string = 'turku'): Promise<Event[]> {
+// Main function to fetch activities from all cities (prioritizing Turku)
+export async function fetchTurkuActivities(): Promise<Event[]> {
   try {
-    const selectedCity = SUPPORTED_CITIES.find(c => c.id === cityFilter);
-    const cityName = selectedCity?.name || 'Turku';
-    
     const [myHelsinkiEvents, turkuCityEvents, visitTurkuEvents] = await Promise.all([
-      fetchMyHelsinkiEvents(cityFilter),
+      fetchMyHelsinkiEvents(),
       fetchTurkuCityEvents(),
       fetchVisitTurkuEvents(),
     ]);
 
-    // Combine all events
+    // Combine all events (MyHelsinki already prioritizes Turku)
     const allEvents = [
       ...myHelsinkiEvents,
       ...turkuCityEvents,
@@ -230,11 +264,7 @@ export async function fetchTurkuActivities(cityFilter: string = 'turku'): Promis
         )
     );
 
-    console.log(`✅ Fetched ${uniqueEvents.length} ${cityName} events from ${[
-      myHelsinkiEvents.length && 'MyHelsinki',
-      turkuCityEvents.length && 'Turku.fi',
-      visitTurkuEvents.length && 'Visit Turku'
-    ].filter(Boolean).join(', ')}`);
+    console.log(`✅ Fetched ${uniqueEvents.length} events from multiple cities (Turku prioritized)`);
     
     return uniqueEvents;
   } catch (error) {
@@ -243,15 +273,15 @@ export async function fetchTurkuActivities(cityFilter: string = 'turku'): Promis
   }
 }
 
-// Periodic event sync with city filter
-export function startEventSync(callback: (events: Event[]) => void, cityFilter: string = 'turku') {
+// Periodic event sync
+export function startEventSync(callback: (events: Event[]) => void) {
   // Initial fetch
-  fetchTurkuActivities(cityFilter).then(callback);
+  fetchTurkuActivities().then(callback);
 
   // Fetch every 6 hours
   const SIX_HOURS = 6 * 60 * 60 * 1000;
   const interval = setInterval(() => {
-    fetchTurkuActivities(cityFilter).then(callback);
+    fetchTurkuActivities().then(callback);
   }, SIX_HOURS);
 
   // Return cleanup function

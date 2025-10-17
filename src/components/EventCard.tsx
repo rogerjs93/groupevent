@@ -173,12 +173,19 @@ export default function EventCard({ event, onUpdate, onDelete, currentUsername }
     <div className="group bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-300 overflow-hidden border border-purple-100 dark:border-purple-900/50 hover:border-purple-300 dark:hover:border-purple-700 transform hover:-translate-y-1 animate-scale-in">
       {/* External Event Badge */}
       {event.isExternal && (
-        <div className="absolute top-4 right-4 z-10">
+        <div className="absolute top-4 right-4 z-10 flex flex-col gap-2">
           <div className="px-3 py-1.5 rounded-full bg-blue-500/20 border border-blue-500/30 backdrop-blur-sm">
             <span className="text-xs font-medium text-blue-600 dark:text-blue-400 flex items-center gap-1">
               <span>✨</span> {event.source}
             </span>
           </div>
+          {event.city && (
+            <div className="px-3 py-1.5 rounded-full bg-purple-500/20 border border-purple-500/30 backdrop-blur-sm">
+              <span className="text-xs font-medium text-purple-600 dark:text-purple-400 flex items-center gap-1">
+                <span>📍</span> {event.city}
+              </span>
+            </div>
+          )}
         </div>
       )}
 

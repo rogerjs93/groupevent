@@ -4,7 +4,7 @@ import EventList from './components/EventList';
 import SuggestEvent from './components/SuggestEvent';
 import UsernameModal from './components/UsernameModal';
 import { fetchEvents, fetchUsers, addEvent, updateEvent, deleteEvent, addUser } from './utils/api';
-import { fetchTurkuActivities, startEventSync, SUPPORTED_CITIES } from './utils/turkuEventsStream';
+import { fetchTurkuActivities, startEventSync } from './utils/turkuEventsStream';
 import { applyStoredVotesToExternalEvents, saveExternalEventVotes } from './utils/externalEventStorage';
 
 function App() {
@@ -17,7 +17,6 @@ function App() {
   const [currentUsername, setCurrentUsername] = useState<string>('');
   const [showPastEvents, setShowPastEvents] = useState(false);
   const [isUserInteracting, setIsUserInteracting] = useState(false);
-  const [selectedCity, setSelectedCity] = useState<string>('turku');
 
   useEffect(() => {
     loadData();
@@ -28,18 +27,12 @@ function App() {
       setCurrentUsername(savedUsername);
     }
 
-    // Load saved city preference
-    const savedCity = localStorage.getItem('selectedCity');
-    if (savedCity && SUPPORTED_CITIES.some(c => c.id === savedCity)) {
-      setSelectedCity(savedCity);
-    }
-
-    // Start syncing events every 6 hours with city filter
+    // Start syncing events every 6 hours
     const turkuCleanup = startEventSync((turkuEvents) => {
       // Apply stored votes to external events before setting state
       const eventsWithVotes = applyStoredVotesToExternalEvents(turkuEvents);
       setExternalEvents(eventsWithVotes);
-    }, selectedCity);
+    });
 
     // Poll for event updates every 60 seconds (1 minute)
     // Only poll when user is not actively interacting
@@ -47,7 +40,7 @@ function App() {
       if (!isUserInteracting) {
         Promise.all([
           fetchEvents(),
-          fetchTurkuActivities(selectedCity)
+          fetchTurkuActivities()
         ]).then(([eventsData, turkuEvents]) => {
           setEvents(eventsData);
           // Apply stored votes to external events
@@ -82,7 +75,7 @@ function App() {
       window.removeEventListener('touchstart', handleUserInteraction);
       window.removeEventListener('click', handleUserInteraction);
     };
-  }, [isUserInteracting, selectedCity]); // Add selectedCity to dependencies
+  }, [isUserInteracting]); // Removed selectedCity from dependencies
 
   const loadData = async () => {
     setLoading(true);
@@ -90,7 +83,7 @@ function App() {
       const [eventsData, usersData, turkuEvents] = await Promise.all([
         fetchEvents(),
         fetchUsers(),
-        fetchTurkuActivities(selectedCity),
+        fetchTurkuActivities(),
       ]);
       
       setEvents(eventsData);
@@ -212,18 +205,6 @@ function App() {
     }
   };
 
-  const handleCityChange = async (city: string) => {
-    setSelectedCity(city);
-    localStorage.setItem('selectedCity', city);
-    // Fetch new events for the selected city
-    try {
-      const turkuEvents = await fetchTurkuActivities(city);
-      setExternalEvents(applyStoredVotesToExternalEvents(turkuEvents));
-    } catch (error) {
-      console.error('Error fetching events for city:', error);
-    }
-  };
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-violet-500 via-purple-500 to-pink-500 dark:from-slate-900 dark:via-purple-900 dark:to-slate-900">
       {/* Animated background elements */}
@@ -246,27 +227,10 @@ function App() {
                   Event Organizer
                 </h1>
               </div>
-              <div className="flex items-center gap-3">
-                <label htmlFor="city-filter" className="text-sm text-gray-600 dark:text-gray-400">
-                  📍
-                </label>
-                <select
-                  id="city-filter"
-                  value={selectedCity}
-                  onChange={(e) => handleCityChange(e.target.value)}
-                  className="px-4 py-2 bg-white/90 dark:bg-slate-800/90 text-gray-800 dark:text-gray-200 rounded-xl border border-purple-200 dark:border-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all duration-200 shadow-lg hover:shadow-xl cursor-pointer"
-                >
-                  {SUPPORTED_CITIES.map((city) => (
-                    <option key={city.id} value={city.id}>
-                      {city.name}
-                    </option>
-                  ))}
-                </select>
-                <p className="text-sm text-gray-600 dark:text-gray-400">
-                  <span className="inline-block w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
-                  {externalEvents.length} Live Events
-                </p>
-              </div>
+              <p className="text-sm text-gray-600 dark:text-gray-400 ml-14 flex items-center gap-2">
+                <span className="inline-block w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+                Finland · {externalEvents.length} Live Events
+              </p>
             </div>
             <div className="flex gap-3 animate-fade-in">
               {currentUsername ? (

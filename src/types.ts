@@ -25,6 +25,7 @@ export interface Event {
   source?: string;
   externalUrl?: string;
   isExternal?: boolean;
+  city?: string; // City where the event takes place
   eventDate?: number; // Timestamp of the event date
   suggestedTime?: string; // Creator's preferred time (e.g., "18:00")
   suggestedTimeSlot?: 'morning' | 'afternoon' | 'evening' | 'night'; // Creator's preferred time slot
