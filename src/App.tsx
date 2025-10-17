@@ -14,6 +14,7 @@ function App() {
   const [showSuggestModal, setShowSuggestModal] = useState(false);
   const [showUsernameModal, setShowUsernameModal] = useState(false);
   const [currentUsername, setCurrentUsername] = useState<string>('');
+  const [showPastEvents, setShowPastEvents] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -106,7 +107,41 @@ function App() {
     }
   };
 
-  const handleSetUsername = async (username: string) {
+  // Categorize events based on their date
+  const categorizeEvents = (eventsList: Event[]) => {
+    const now = Date.now();
+    const sevenDaysFromNow = now + (7 * 24 * 60 * 60 * 1000);
+    
+    const upcoming: Event[] = [];
+    const happeningSoon: Event[] = [];
+    const past: Event[] = [];
+    const noDate: Event[] = [];
+
+    eventsList.forEach(event => {
+      if (!event.eventDate) {
+        noDate.push(event);
+        return;
+      }
+
+      if (event.eventDate < now) {
+        past.push(event);
+      } else if (event.eventDate <= sevenDaysFromNow) {
+        happeningSoon.push(event);
+      } else {
+        upcoming.push(event);
+      }
+    });
+
+    // Sort each category
+    happeningSoon.sort((a, b) => (a.eventDate || 0) - (b.eventDate || 0)); // Soonest first
+    upcoming.sort((a, b) => (a.eventDate || 0) - (b.eventDate || 0)); // Soonest first
+    past.sort((a, b) => (b.eventDate || 0) - (a.eventDate || 0)); // Most recent first
+    noDate.sort((a, b) => b.createdAt - a.createdAt); // Newest first
+
+    return { upcoming, happeningSoon, past, noDate };
+  };
+
+  const handleSetUsername = async (username: string) => {
     const newUser: User = {
       username,
       createdAt: new Date().toISOString(),
@@ -207,22 +242,120 @@ function App() {
               </div>
             )}
 
-            {/* User Suggested Events */}
-            <div className="space-y-6 animate-fade-in animation-delay-200">
-              <div className="flex items-center gap-3">
-                <h2 className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
-                  👥 Community Events
-                </h2>
-                <div className="px-3 py-1 bg-purple-500/20 border border-purple-500/30 rounded-full backdrop-blur-sm">
-                  <span className="text-xs font-medium text-purple-300">{events.length} events</span>
-                </div>
-              </div>
-              <EventList 
-                events={events} 
-                onUpdateEvent={handleUpdateEvent}
-                onDeleteEvent={handleDeleteEvent}
-                currentUsername={currentUsername}
-              />
+            {/* User Suggested Events - Categorized */}
+            <div className="space-y-10 animate-fade-in animation-delay-200">
+              {(() => {
+                const { upcoming, happeningSoon, past, noDate } = categorizeEvents(events);
+                
+                return (
+                  <>
+                    {/* Happening Soon Section */}
+                    {happeningSoon.length > 0 && (
+                      <div className="space-y-6">
+                        <div className="flex items-center gap-3">
+                          <h2 className="text-3xl font-bold bg-gradient-to-r from-orange-500 to-red-500 bg-clip-text text-transparent">
+                            🔥 Happening Soon
+                          </h2>
+                          <div className="px-3 py-1 bg-orange-500/20 border border-orange-500/30 rounded-full backdrop-blur-sm">
+                            <span className="text-xs font-medium text-orange-300">{happeningSoon.length} events</span>
+                          </div>
+                        </div>
+                        <EventList 
+                          events={happeningSoon} 
+                          onUpdateEvent={handleUpdateEvent}
+                          onDeleteEvent={handleDeleteEvent}
+                          currentUsername={currentUsername}
+                        />
+                      </div>
+                    )}
+
+                    {/* Upcoming Events Section */}
+                    {upcoming.length > 0 && (
+                      <div className="space-y-6">
+                        <div className="flex items-center gap-3">
+                          <h2 className="text-3xl font-bold bg-gradient-to-r from-blue-500 to-purple-500 bg-clip-text text-transparent">
+                            📅 Upcoming Events
+                          </h2>
+                          <div className="px-3 py-1 bg-blue-500/20 border border-blue-500/30 rounded-full backdrop-blur-sm">
+                            <span className="text-xs font-medium text-blue-300">{upcoming.length} events</span>
+                          </div>
+                        </div>
+                        <EventList 
+                          events={upcoming} 
+                          onUpdateEvent={handleUpdateEvent}
+                          onDeleteEvent={handleDeleteEvent}
+                          currentUsername={currentUsername}
+                        />
+                      </div>
+                    )}
+
+                    {/* No Date Events Section */}
+                    {noDate.length > 0 && (
+                      <div className="space-y-6">
+                        <div className="flex items-center gap-3">
+                          <h2 className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+                            � Community Ideas
+                          </h2>
+                          <div className="px-3 py-1 bg-purple-500/20 border border-purple-500/30 rounded-full backdrop-blur-sm">
+                            <span className="text-xs font-medium text-purple-300">{noDate.length} events</span>
+                          </div>
+                        </div>
+                        <EventList 
+                          events={noDate} 
+                          onUpdateEvent={handleUpdateEvent}
+                          onDeleteEvent={handleDeleteEvent}
+                          currentUsername={currentUsername}
+                        />
+                      </div>
+                    )}
+
+                    {/* Past Events Section - Collapsible */}
+                    {past.length > 0 && (
+                      <div className="space-y-6">
+                        <div className="flex items-center gap-3">
+                          <button
+                            onClick={() => setShowPastEvents(!showPastEvents)}
+                            className="flex items-center gap-3 hover:opacity-80 transition-opacity"
+                          >
+                            <h2 className="text-3xl font-bold bg-gradient-to-r from-gray-500 to-gray-400 bg-clip-text text-transparent">
+                              📦 Past Events
+                            </h2>
+                            <div className="px-3 py-1 bg-gray-500/20 border border-gray-500/30 rounded-full backdrop-blur-sm">
+                              <span className="text-xs font-medium text-gray-300">{past.length} events</span>
+                            </div>
+                            <span className="text-gray-400 text-xl">
+                              {showPastEvents ? '▼' : '▶'}
+                            </span>
+                          </button>
+                        </div>
+                        {showPastEvents && (
+                          <div className="opacity-70 hover:opacity-100 transition-opacity">
+                            <EventList 
+                              events={past} 
+                              onUpdateEvent={handleUpdateEvent}
+                              onDeleteEvent={handleDeleteEvent}
+                              currentUsername={currentUsername}
+                            />
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Empty State */}
+                    {events.length === 0 && (
+                      <div className="text-center py-16 animate-fade-in">
+                        <div className="text-6xl mb-4">🎉</div>
+                        <h3 className="text-2xl font-bold text-white dark:text-gray-300 mb-2">
+                          No community events yet
+                        </h3>
+                        <p className="text-gray-400 dark:text-gray-500">
+                          Be the first to suggest an event!
+                        </p>
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
             </div>
           </div>
         )}
