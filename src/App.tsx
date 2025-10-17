@@ -25,11 +25,23 @@ function App() {
     }
 
     // Start syncing Turku events every 6 hours
-    const cleanup = startEventSync((turkuEvents) => {
+    const turkuCleanup = startEventSync((turkuEvents) => {
       setExternalEvents(turkuEvents);
     });
 
-    return cleanup; // Cleanup interval on unmount
+    // Poll for event updates every 10 seconds to show votes and new events
+    const pollInterval = setInterval(() => {
+      fetchEvents().then((eventsData) => {
+        setEvents(eventsData);
+      }).catch((error) => {
+        console.error('Error polling events:', error);
+      });
+    }, 10000); // Poll every 10 seconds
+
+    return () => {
+      turkuCleanup(); // Cleanup Turku events interval
+      clearInterval(pollInterval); // Cleanup polling interval
+    };
   }, []);
 
   const loadData = async () => {
