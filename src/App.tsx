@@ -89,21 +89,32 @@ function App() {
         return;
       }
 
-      // Optimistically update the UI
+      // Optimistically update the UI immediately
       setEvents(prev => prev.map(e => e.id === updatedEvent.id ? updatedEvent : e));
       
-      // Then update on server
+      // Update on server
       await updateEvent(updatedEvent);
       
-      // Fetch fresh data to ensure consistency
-      const freshEvents = await fetchEvents();
-      setEvents(freshEvents);
+      // Wait a moment for GitHub to process, then fetch fresh data
+      setTimeout(async () => {
+        try {
+          const freshEvents = await fetchEvents();
+          setEvents(freshEvents);
+        } catch (error) {
+          console.error('Error fetching fresh events:', error);
+        }
+      }, 1000); // Wait 1 second before fetching to allow server processing
+      
     } catch (error) {
       console.error('Error updating event:', error);
       alert('Failed to update event. Please try again.');
       // Revert to fresh data on error
-      const freshEvents = await fetchEvents();
-      setEvents(freshEvents);
+      try {
+        const freshEvents = await fetchEvents();
+        setEvents(freshEvents);
+      } catch (fetchError) {
+        console.error('Error reverting to fresh data:', fetchError);
+      }
     }
   };
 

@@ -28,7 +28,9 @@ const apiRequest = async (url: string, options?: RequestInit) => {
 // Events API
 export const fetchEvents = async (): Promise<Event[]> => {
   try {
-    return await apiRequest(EVENTS_ENDPOINT);
+    // Add cache busting to ensure fresh data
+    const cacheBuster = `?_t=${Date.now()}`;
+    return await apiRequest(`${EVENTS_ENDPOINT}${cacheBuster}`);
   } catch (error) {
     console.error('Error fetching events:', error);
     return [];
