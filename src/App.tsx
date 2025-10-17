@@ -3,9 +3,8 @@ import { Event, User } from './types';
 import EventList from './components/EventList';
 import SuggestEvent from './components/SuggestEvent';
 import UsernameModal from './components/UsernameModal';
-import SyncStatus from './components/SyncStatus';
 import { fetchEvents, fetchUsers, addEvent, updateEvent, deleteEvent, addUser } from './utils/api';
-import { fetchTurkuActivities, startEventSync } from './utils/turkuEventsStream';
+import { fetchTurkuActivities, startEventSync, SUPPORTED_CITIES } from './utils/turkuEventsStream';
 import { applyStoredVotesToExternalEvents, saveExternalEventVotes } from './utils/externalEventStorage';
 
 function App() {
@@ -15,10 +14,10 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [showSuggestModal, setShowSuggestModal] = useState(false);
   const [showUsernameModal, setShowUsernameModal] = useState(false);
-  const [showSyncStatus, setShowSyncStatus] = useState(false);
   const [currentUsername, setCurrentUsername] = useState<string>('');
   const [showPastEvents, setShowPastEvents] = useState(false);
   const [isUserInteracting, setIsUserInteracting] = useState(false);
+  const [selectedCity, setSelectedCity] = useState<string>('turku');
 
   useEffect(() => {
     loadData();
@@ -29,12 +28,18 @@ function App() {
       setCurrentUsername(savedUsername);
     }
 
-    // Start syncing Turku events every 6 hours
+    // Load saved city preference
+    const savedCity = localStorage.getItem('selectedCity');
+    if (savedCity && SUPPORTED_CITIES.some(c => c.id === savedCity)) {
+      setSelectedCity(savedCity);
+    }
+
+    // Start syncing events every 6 hours with city filter
     const turkuCleanup = startEventSync((turkuEvents) => {
       // Apply stored votes to external events before setting state
       const eventsWithVotes = applyStoredVotesToExternalEvents(turkuEvents);
       setExternalEvents(eventsWithVotes);
-    });
+    }, selectedCity);
 
     // Poll for event updates every 60 seconds (1 minute)
     // Only poll when user is not actively interacting
@@ -42,7 +47,7 @@ function App() {
       if (!isUserInteracting) {
         Promise.all([
           fetchEvents(),
-          fetchTurkuActivities()
+          fetchTurkuActivities(selectedCity)
         ]).then(([eventsData, turkuEvents]) => {
           setEvents(eventsData);
           // Apply stored votes to external events
@@ -77,7 +82,7 @@ function App() {
       window.removeEventListener('touchstart', handleUserInteraction);
       window.removeEventListener('click', handleUserInteraction);
     };
-  }, [isUserInteracting]);
+  }, [isUserInteracting, selectedCity]); // Add selectedCity to dependencies
 
   const loadData = async () => {
     setLoading(true);
@@ -85,7 +90,7 @@ function App() {
       const [eventsData, usersData, turkuEvents] = await Promise.all([
         fetchEvents(),
         fetchUsers(),
-        fetchTurkuActivities(),
+        fetchTurkuActivities(selectedCity),
       ]);
       
       setEvents(eventsData);
@@ -207,6 +212,18 @@ function App() {
     }
   };
 
+  const handleCityChange = async (city: string) => {
+    setSelectedCity(city);
+    localStorage.setItem('selectedCity', city);
+    // Fetch new events for the selected city
+    try {
+      const turkuEvents = await fetchTurkuActivities(city);
+      setExternalEvents(applyStoredVotesToExternalEvents(turkuEvents));
+    } catch (error) {
+      console.error('Error fetching events for city:', error);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-violet-500 via-purple-500 to-pink-500 dark:from-slate-900 dark:via-purple-900 dark:to-slate-900">
       {/* Animated background elements */}
@@ -229,19 +246,29 @@ function App() {
                   Event Organizer
                 </h1>
               </div>
-              <p className="text-sm text-gray-600 dark:text-gray-400 ml-14 flex items-center gap-2">
-                <span className="inline-block w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
-                Turku, Finland · {externalEvents.length} Live Events
-              </p>
+              <div className="flex items-center gap-3">
+                <label htmlFor="city-filter" className="text-sm text-gray-600 dark:text-gray-400">
+                  📍
+                </label>
+                <select
+                  id="city-filter"
+                  value={selectedCity}
+                  onChange={(e) => handleCityChange(e.target.value)}
+                  className="px-4 py-2 bg-white/90 dark:bg-slate-800/90 text-gray-800 dark:text-gray-200 rounded-xl border border-purple-200 dark:border-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all duration-200 shadow-lg hover:shadow-xl cursor-pointer"
+                >
+                  {SUPPORTED_CITIES.map((city) => (
+                    <option key={city.id} value={city.id}>
+                      {city.name}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  <span className="inline-block w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+                  {externalEvents.length} Live Events
+                </p>
+              </div>
             </div>
             <div className="flex gap-3 animate-fade-in">
-              <button
-                onClick={() => setShowSyncStatus(true)}
-                className="px-4 py-2.5 bg-blue-500/90 hover:bg-blue-600 text-white rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 border border-blue-400"
-                title="View monthly event sync status"
-              >
-                <span className="text-lg">🗓️</span>
-              </button>
               {currentUsername ? (
                 <div className="px-5 py-2.5 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200">
                   <span className="text-lg">👤</span> {currentUsername}
@@ -430,13 +457,6 @@ function App() {
           onClose={() => setShowUsernameModal(false)}
           onSubmit={handleSetUsername}
           existingUsers={users}
-        />
-      )}
-
-      {showSyncStatus && (
-        <SyncStatus
-          show={showSyncStatus}
-          onClose={() => setShowSyncStatus(false)}
         />
       )}
     </div>

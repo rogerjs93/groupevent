@@ -47,8 +47,18 @@ function convertToAppEvent(externalEvent: ExternalEvent, source: string): Event 
   };
 }
 
-// Fetch events from MyHelsinki API (covers Turku region)
-async function fetchMyHelsinkiEvents(): Promise<Event[]> {
+// List of supported cities
+export const SUPPORTED_CITIES = [
+  { id: 'turku', name: 'Turku', aliases: ['turku', 'åbo'] },
+  { id: 'helsinki', name: 'Helsinki', aliases: ['helsinki', 'helsingfors'] },
+  { id: 'tampere', name: 'Tampere', aliases: ['tampere', 'tammerfors'] },
+  { id: 'oulu', name: 'Oulu', aliases: ['oulu', 'uleåborg'] },
+  { id: 'espoo', name: 'Espoo', aliases: ['espoo', 'esbo'] },
+  { id: 'vantaa', name: 'Vantaa', aliases: ['vantaa', 'vanda'] },
+];
+
+// Fetch events from MyHelsinki API with city filter
+async function fetchMyHelsinkiEvents(cityFilter?: string): Promise<Event[]> {
   try {
     const response = await fetch(
       'https://open-api.myhelsinki.fi/v1/events/?limit=100'
@@ -61,9 +71,13 @@ async function fetchMyHelsinkiEvents(): Promise<Event[]> {
     
     const data = await response.json();
     
+    // Get city aliases for filtering
+    const selectedCity = SUPPORTED_CITIES.find(c => c.id === cityFilter);
+    const cityAliases = selectedCity?.aliases || ['turku', 'åbo']; // Default to Turku
+    
     return (data.data || [])
       .filter((event: ExternalEvent) => {
-        // Filter for Turku-related events
+        // Filter for city-related events
         const name = (event.name?.fi || event.name?.en || '').toLowerCase();
         const desc = (
           event.description?.intro || 
@@ -75,17 +89,16 @@ async function fetchMyHelsinkiEvents(): Promise<Event[]> {
         const location = (event.location?.address?.locality || '').toLowerCase();
         const tags = (event.tags || []).map(t => (t.name || '').toLowerCase()).join(' ');
         
-        return (
-          name.includes('turku') || 
-          desc.includes('turku') || 
-          location.includes('turku') ||
-          tags.includes('turku') ||
-          name.includes('åbo') ||
-          location.includes('åbo')
+        // Check if any city alias matches
+        return cityAliases.some(alias => 
+          name.includes(alias) || 
+          desc.includes(alias) || 
+          location.includes(alias) ||
+          tags.includes(alias)
         );
       })
-      .slice(0, 15) // Increased to 15 events
-      .map((event: ExternalEvent) => convertToAppEvent(event, 'MyHelsinki'));
+      .slice(0, 15) // Limit to 15 events
+      .map((event: ExternalEvent) => convertToAppEvent(event, `MyHelsinki-${selectedCity?.name || 'Turku'}`));
   } catch (error) {
     console.error('Error fetching MyHelsinki events:', error);
     return [];
@@ -190,11 +203,14 @@ async function fetchVisitTurkuEvents(): Promise<Event[]> {
   }
 }
 
-// Main function to fetch all Turku activities
-export async function fetchTurkuActivities(): Promise<Event[]> {
+// Main function to fetch activities with city filter
+export async function fetchTurkuActivities(cityFilter: string = 'turku'): Promise<Event[]> {
   try {
+    const selectedCity = SUPPORTED_CITIES.find(c => c.id === cityFilter);
+    const cityName = selectedCity?.name || 'Turku';
+    
     const [myHelsinkiEvents, turkuCityEvents, visitTurkuEvents] = await Promise.all([
-      fetchMyHelsinkiEvents(),
+      fetchMyHelsinkiEvents(cityFilter),
       fetchTurkuCityEvents(),
       fetchVisitTurkuEvents(),
     ]);
@@ -214,7 +230,7 @@ export async function fetchTurkuActivities(): Promise<Event[]> {
         )
     );
 
-    console.log(`✅ Fetched ${uniqueEvents.length} Turku events from ${[
+    console.log(`✅ Fetched ${uniqueEvents.length} ${cityName} events from ${[
       myHelsinkiEvents.length && 'MyHelsinki',
       turkuCityEvents.length && 'Turku.fi',
       visitTurkuEvents.length && 'Visit Turku'
@@ -222,20 +238,20 @@ export async function fetchTurkuActivities(): Promise<Event[]> {
     
     return uniqueEvents;
   } catch (error) {
-    console.error('Error fetching Turku events:', error);
+    console.error('Error fetching events:', error);
     return [];
   }
 }
 
-// Periodic event sync (call this from App.tsx)
-export function startEventSync(callback: (events: Event[]) => void) {
+// Periodic event sync with city filter
+export function startEventSync(callback: (events: Event[]) => void, cityFilter: string = 'turku') {
   // Initial fetch
-  fetchTurkuActivities().then(callback);
+  fetchTurkuActivities(cityFilter).then(callback);
 
   // Fetch every 6 hours
   const SIX_HOURS = 6 * 60 * 60 * 1000;
   const interval = setInterval(() => {
-    fetchTurkuActivities().then(callback);
+    fetchTurkuActivities(cityFilter).then(callback);
   }, SIX_HOURS);
 
   // Return cleanup function
