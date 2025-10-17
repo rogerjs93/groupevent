@@ -18,7 +18,9 @@
       },
       "evening": {
         "votes": 1,
-        "specificTimes": {}
+        "specificTimes": {
+          "22:30": 1
+        }
       },
       "night": {
         "votes": 0,
