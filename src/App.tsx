@@ -3,6 +3,7 @@ import { Event, User } from './types';
 import EventList from './components/EventList';
 import SuggestEvent from './components/SuggestEvent';
 import UsernameModal from './components/UsernameModal';
+import SyncStatus from './components/SyncStatus';
 import { fetchEvents, fetchUsers, addEvent, updateEvent, deleteEvent, addUser } from './utils/api';
 import { fetchTurkuActivities, startEventSync } from './utils/turkuEventsStream';
 import { applyStoredVotesToExternalEvents, saveExternalEventVotes } from './utils/externalEventStorage';
@@ -14,6 +15,7 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [showSuggestModal, setShowSuggestModal] = useState(false);
   const [showUsernameModal, setShowUsernameModal] = useState(false);
+  const [showSyncStatus, setShowSyncStatus] = useState(false);
   const [currentUsername, setCurrentUsername] = useState<string>('');
   const [showPastEvents, setShowPastEvents] = useState(false);
   const [isUserInteracting, setIsUserInteracting] = useState(false);
@@ -233,6 +235,13 @@ function App() {
               </p>
             </div>
             <div className="flex gap-3 animate-fade-in">
+              <button
+                onClick={() => setShowSyncStatus(true)}
+                className="px-4 py-2.5 bg-blue-500/90 hover:bg-blue-600 text-white rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 border border-blue-400"
+                title="View monthly event sync status"
+              >
+                <span className="text-lg">🗓️</span>
+              </button>
               {currentUsername ? (
                 <div className="px-5 py-2.5 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200">
                   <span className="text-lg">👤</span> {currentUsername}
@@ -421,6 +430,13 @@ function App() {
           onClose={() => setShowUsernameModal(false)}
           onSubmit={handleSetUsername}
           existingUsers={users}
+        />
+      )}
+
+      {showSyncStatus && (
+        <SyncStatus
+          show={showSyncStatus}
+          onClose={() => setShowSyncStatus(false)}
         />
       )}
     </div>
