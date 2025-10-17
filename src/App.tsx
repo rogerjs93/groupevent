@@ -5,6 +5,7 @@ import SuggestEvent from './components/SuggestEvent';
 import UsernameModal from './components/UsernameModal';
 import { fetchEvents, fetchUsers, addEvent, updateEvent, deleteEvent, addUser } from './utils/api';
 import { fetchTurkuActivities, startEventSync } from './utils/turkuEventsStream';
+import { applyStoredVotesToExternalEvents, saveExternalEventVotes } from './utils/externalEventStorage';
 
 function App() {
   const [events, setEvents] = useState<Event[]>([]);
@@ -28,7 +29,9 @@ function App() {
 
     // Start syncing Turku events every 6 hours
     const turkuCleanup = startEventSync((turkuEvents) => {
-      setExternalEvents(turkuEvents);
+      // Apply stored votes to external events before setting state
+      const eventsWithVotes = applyStoredVotesToExternalEvents(turkuEvents);
+      setExternalEvents(eventsWithVotes);
     });
 
     // Poll for event updates every 60 seconds (1 minute)
@@ -40,7 +43,8 @@ function App() {
           fetchTurkuActivities()
         ]).then(([eventsData, turkuEvents]) => {
           setEvents(eventsData);
-          setExternalEvents(turkuEvents);
+          // Apply stored votes to external events
+          setExternalEvents(applyStoredVotesToExternalEvents(turkuEvents));
         }).catch((error) => {
           console.error('Error polling events:', error);
         });
@@ -83,7 +87,8 @@ function App() {
       ]);
       
       setEvents(eventsData);
-      setExternalEvents(turkuEvents);
+      // Apply stored votes to external events
+      setExternalEvents(applyStoredVotesToExternalEvents(turkuEvents));
       setUsers(usersData);
     } catch (error) {
       console.error('Error loading data:', error);
@@ -105,8 +110,9 @@ function App() {
 
   const handleUpdateEvent = async (updatedEvent: Event) => {
     try {
-      // Don't update external events in repo
+      // Handle external events differently - store votes in localStorage
       if (updatedEvent.isExternal) {
+        saveExternalEventVotes(updatedEvent.id, updatedEvent);
         setExternalEvents(prev =>
           prev.map(e => (e.id === updatedEvent.id ? updatedEvent : e))
         );

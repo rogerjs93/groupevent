@@ -51,7 +51,7 @@ function convertToAppEvent(externalEvent: ExternalEvent, source: string): Event 
 async function fetchMyHelsinkiEvents(): Promise<Event[]> {
   try {
     const response = await fetch(
-      'https://open-api.myhelsinki.fi/v1/events/?limit=50'
+      'https://open-api.myhelsinki.fi/v1/events/?limit=100'
     );
     
     if (!response.ok) {
@@ -84,7 +84,7 @@ async function fetchMyHelsinkiEvents(): Promise<Event[]> {
           location.includes('åbo')
         );
       })
-      .slice(0, 8) // Limit to 8 events
+      .slice(0, 15) // Increased to 15 events
       .map((event: ExternalEvent) => convertToAppEvent(event, 'MyHelsinki'));
   } catch (error) {
     console.error('Error fetching MyHelsinki events:', error);
