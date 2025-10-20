@@ -370,7 +370,7 @@ function App() {
               </div>
               <p className="text-sm text-gray-600 dark:text-gray-400 ml-14 flex items-center gap-2">
                 <span className="inline-block w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
-                Finland · {externalEvents.length} Live Events
+                Turku · {externalEvents.length} Live Events
               </p>
             </div>
             <div className="flex gap-3 animate-fade-in">
