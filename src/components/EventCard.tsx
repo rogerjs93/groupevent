@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Event } from '../types';
 import { hasVoted, addVote, getVoteForEvent } from '../utils/cookies';
 import { formatTime } from '../utils/timeUtils';
+import { useToast } from '../contexts/ToastContext';
 
 interface EventCardProps {
   event: Event;
@@ -16,16 +17,22 @@ export default function EventCard({ event, onUpdate, onDelete, currentUsername }
   const [showTimeSlots, setShowTimeSlots] = useState(false);
   const [selectedTimeSlotKey, setSelectedTimeSlotKey] = useState<TimeSlotKey | null>(null);
   const [showSpecificTimes, setShowSpecificTimes] = useState(false);
+  const [isAnimating, setIsAnimating] = useState(false);
   const voted = hasVoted(event.id);
   const existingVote = getVoteForEvent(event.id);
+  const { showToast } = useToast();
 
   const timeSlotKeys: TimeSlotKey[] = ['morning', 'afternoon', 'evening', 'night'];
 
   const handleVote = (interested: boolean, timeSlotKey?: TimeSlotKey) => {
     if (voted && !timeSlotKey) {
-      alert('You have already voted on this event!');
+      showToast('You have already voted on this event!', 'info');
       return;
     }
+
+    // Trigger animation
+    setIsAnimating(true);
+    setTimeout(() => setIsAnimating(false), 600);
 
     if (!interested) {
       // Handle "not interested" vote
@@ -40,6 +47,7 @@ export default function EventCard({ event, onUpdate, onDelete, currentUsername }
       });
       
       onUpdate(updatedEvent);
+      showToast('Thanks for your feedback!', 'success');
       return;
     }
 
@@ -57,6 +65,7 @@ export default function EventCard({ event, onUpdate, onDelete, currentUsername }
       
       onUpdate(updatedEvent);
       setShowTimeSlots(true);
+      showToast('Great! Now pick your preferred time 🕐', 'success');
       return;
     }
 
@@ -87,7 +96,7 @@ export default function EventCard({ event, onUpdate, onDelete, currentUsername }
 
   const handleSpecificTimeVote = (time: string) => {
     if (existingVote?.specificTime || !selectedTimeSlotKey) {
-      alert('You have already selected a specific time!');
+      showToast('You have already selected a specific time!', 'info');
       return;
     }
 
@@ -118,6 +127,7 @@ export default function EventCard({ event, onUpdate, onDelete, currentUsername }
 
     onUpdate(updatedEvent);
     setShowSpecificTimes(false);
+    showToast(`Perfect! You selected ${time} 🎉`, 'success');
   };
 
   const totalVotes = event.interestedCount + event.notInterestedCount;
@@ -170,7 +180,9 @@ export default function EventCard({ event, onUpdate, onDelete, currentUsername }
   };
 
   return (
-    <div className="group bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-300 overflow-hidden border border-purple-100 dark:border-purple-900/50 hover:border-purple-300 dark:hover:border-purple-700 transform hover:-translate-y-1 animate-scale-in">
+    <div className={`group bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-300 overflow-hidden border border-purple-100 dark:border-purple-900/50 hover:border-purple-300 dark:hover:border-purple-700 transform hover:-translate-y-1 animate-scale-in ${
+      isAnimating ? 'scale-105 shadow-2xl ring-4 ring-purple-400' : ''
+    }`}>
       {/* External Event Badge */}
       {event.isExternal && (
         <div className="absolute top-4 right-4 z-10 flex flex-col gap-2">

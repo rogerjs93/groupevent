@@ -29,6 +29,15 @@ export interface Event {
   eventDate?: number; // Timestamp of the event date
   suggestedTime?: string; // Creator's preferred time (e.g., "18:00")
   suggestedTimeSlot?: 'morning' | 'afternoon' | 'evening' | 'night'; // Creator's preferred time slot
+  // Recurring event fields
+  isRecurring?: boolean;
+  recurrencePattern?: 'daily' | 'weekly' | 'monthly';
+  recurrenceEndDate?: number; // Timestamp when recurrence ends
+  // Advanced fields
+  cost?: 'free' | '$' | '$$' | '$$$';
+  rsvpDeadline?: number; // Timestamp for RSVP deadline
+  capacity?: number; // Maximum number of participants
+  currentAttendees?: number; // Current number of RSVPs
 }
 
 export interface User {
