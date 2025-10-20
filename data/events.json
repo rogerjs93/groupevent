@@ -44,7 +44,9 @@
     "timeSlots": {
       "morning": {
         "votes": 1,
-        "specificTimes": {}
+        "specificTimes": {
+          "06:00": 1
+        }
       },
       "afternoon": {
         "votes": 0,
