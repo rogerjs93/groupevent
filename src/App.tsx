@@ -3,9 +3,11 @@ import { Event, User } from './types';
 import EventList from './components/EventList';
 import SuggestEvent from './components/SuggestEvent';
 import UsernameModal from './components/UsernameModal';
+import UserStatsModal from './components/UserStatsModal';
 import { fetchEvents, fetchUsers, addEvent, updateEvent, deleteEvent, addUser } from './utils/api';
 import { fetchTurkuActivities, startEventSync } from './utils/turkuEventsStream';
 import { applyStoredVotesToExternalEvents, saveExternalEventVotes } from './utils/externalEventStorage';
+import { canCreateEvent, recordEventCreation } from './utils/rateLimiting';
 
 function App() {
   const [events, setEvents] = useState<Event[]>([]);
@@ -14,6 +16,7 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [showSuggestModal, setShowSuggestModal] = useState(false);
   const [showUsernameModal, setShowUsernameModal] = useState(false);
+  const [showStatsModal, setShowStatsModal] = useState(false);
   const [currentUsername, setCurrentUsername] = useState<string>('');
   const [showPastEvents, setShowPastEvents] = useState(false);
   const [isUserInteracting, setIsUserInteracting] = useState(false);
@@ -97,10 +100,31 @@ function App() {
     }
   };
 
+  const handleSuggestClick = () => {
+    const rateCheck = canCreateEvent();
+    
+    if (!rateCheck.allowed) {
+      alert(rateCheck.reason);
+      setShowStatsModal(true);
+      return;
+    }
+    
+    setShowSuggestModal(true);
+  };
+
   const handleAddEvent = async (event: Event) => {
+    const rateCheck = canCreateEvent();
+    
+    if (!rateCheck.allowed) {
+      alert(rateCheck.reason);
+      setShowStatsModal(true);
+      return;
+    }
+
     try {
       await addEvent(event);
       setEvents([...events, event]);
+      recordEventCreation();
       setShowSuggestModal(false);
     } catch (error) {
       console.error('Error adding event:', error);
@@ -233,6 +257,15 @@ function App() {
               </p>
             </div>
             <div className="flex gap-3 animate-fade-in">
+              {/* Stats Button */}
+              <button
+                onClick={() => setShowStatsModal(true)}
+                className="px-4 py-2.5 bg-white/90 dark:bg-slate-800/90 text-gray-800 dark:text-gray-200 rounded-xl hover:bg-white dark:hover:bg-slate-800 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 border border-purple-200 dark:border-purple-700"
+                title="View your event creation stats"
+              >
+                <span className="text-lg">📊</span>
+              </button>
+              
               {currentUsername ? (
                 <div className="px-5 py-2.5 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200">
                   <span className="text-lg">👤</span> {currentUsername}
@@ -246,7 +279,7 @@ function App() {
                 </button>
               )}
               <button
-                onClick={() => setShowSuggestModal(true)}
+                onClick={handleSuggestClick}
                 className="px-6 py-2.5 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-xl hover:from-purple-700 hover:to-pink-700 transition-all duration-200 shadow-lg hover:shadow-2xl transform hover:scale-105 font-semibold"
               >
                 <span className="text-lg">+</span> Suggest Event
@@ -421,6 +454,12 @@ function App() {
           onClose={() => setShowUsernameModal(false)}
           onSubmit={handleSetUsername}
           existingUsers={users}
+        />
+      )}
+
+      {showStatsModal && (
+        <UserStatsModal
+          onClose={() => setShowStatsModal(false)}
         />
       )}
     </div>
