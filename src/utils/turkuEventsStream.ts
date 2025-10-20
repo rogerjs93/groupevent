@@ -61,12 +61,13 @@ export const SUPPORTED_CITIES = [
 // Fetch events from MyHelsinki API - gets events from all Finnish cities
 async function fetchMyHelsinkiEvents(): Promise<Event[]> {
   try {
-    const response = await fetch(
-      'https://open-api.myhelsinki.fi/v1/events/?limit=100'
-    );
+    // Use our Vercel serverless function proxy to bypass CORS
+    // In production, this will be /api/myhelsinki
+    // In development, you can use 'vercel dev' to test locally
+    const response = await fetch('/api/myhelsinki?limit=100');
     
     if (!response.ok) {
-      console.warn('MyHelsinki API returned:', response.status);
+      console.warn('MyHelsinki proxy API returned:', response.status);
       return [];
     }
     
