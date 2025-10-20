@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Event, User } from './types';
 import EventList from './components/EventList';
 import SuggestEvent from './components/SuggestEvent';
@@ -19,8 +19,10 @@ function App() {
   const [showStatsModal, setShowStatsModal] = useState(false);
   const [currentUsername, setCurrentUsername] = useState<string>('');
   const [showPastEvents, setShowPastEvents] = useState(false);
-  const [isUserInteracting, setIsUserInteracting] = useState(false);
-  const [isPageVisible, setIsPageVisible] = useState(true);
+
+  // Use useRef to track interaction state without causing re-renders
+  const isUserInteractingRef = useRef(false);
+  const interactionTimeoutRef = useRef<NodeJS.Timeout>();
 
   useEffect(() => {
     loadData();
@@ -33,7 +35,6 @@ function App() {
 
     // Handle page visibility changes
     const handleVisibilityChange = () => {
-      setIsPageVisible(!document.hidden);
       if (!document.hidden) {
         console.log('📱 Page visible - resuming polls');
       } else {
@@ -49,10 +50,11 @@ function App() {
       setExternalEvents(eventsWithVotes);
     });
 
-    // Poll for event updates every 5 minutes (reduced from 60 seconds)
+    // Poll for event updates every 5 minutes
     // Only poll when user is not actively interacting AND page is visible
     const pollInterval = setInterval(() => {
-      if (!isUserInteracting && isPageVisible) {
+      // Use ref instead of state to check interaction without triggering re-renders
+      if (!isUserInteractingRef.current && !document.hidden) {
         console.log('🔄 Polling for event updates...');
         Promise.all([
           fetchEvents(),
@@ -66,7 +68,7 @@ function App() {
           console.error('Error polling events:', error);
         });
       } else {
-        if (!isPageVisible) {
+        if (document.hidden) {
           console.log('⏸️ Skipping poll - page not visible');
         } else {
           console.log('⏸️ Skipping poll - user is interacting');
@@ -75,13 +77,12 @@ function App() {
     }, 5 * 60 * 1000); // Poll every 5 minutes
 
     // Detect user interaction to pause polling
-    let interactionTimeout: NodeJS.Timeout;
     const handleUserInteraction = () => {
-      setIsUserInteracting(true);
-      clearTimeout(interactionTimeout);
-      // Resume polling after 10 seconds of no interaction (increased from 3)
-      interactionTimeout = setTimeout(() => {
-        setIsUserInteracting(false);
+      isUserInteractingRef.current = true;
+      clearTimeout(interactionTimeoutRef.current);
+      // Resume polling after 10 seconds of no interaction
+      interactionTimeoutRef.current = setTimeout(() => {
+        isUserInteractingRef.current = false;
         console.log('✅ Polling resumed');
       }, 10000);
     };
@@ -94,13 +95,13 @@ function App() {
     return () => {
       turkuCleanup(); // Cleanup Turku events interval
       clearInterval(pollInterval); // Cleanup polling interval
-      clearTimeout(interactionTimeout);
+      clearTimeout(interactionTimeoutRef.current);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('mousedown', handleUserInteraction);
       window.removeEventListener('touchstart', handleUserInteraction);
       window.removeEventListener('click', handleUserInteraction);
     };
-  }, [isUserInteracting, isPageVisible]); // Added isPageVisible to dependencies
+  }, []); // Empty dependency array - runs only once on mount
 
   const loadData = async () => {
     setLoading(true);
