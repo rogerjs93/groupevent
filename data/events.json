@@ -39,7 +39,7 @@
     "description": "test event 2",
     "suggestedBy": "SpikeTransmitterAlpha",
     "createdAt": 1760698129380,
-    "interestedCount": 0,
+    "interestedCount": 1,
     "notInterestedCount": 0,
     "timeSlots": {
       "morning": {
