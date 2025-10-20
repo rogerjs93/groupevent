@@ -90,12 +90,12 @@ function UserStatsModal({ onClose }: UserStatsModalProps) {
           </div>
 
           {/* Info Box */}
-          <div className="bg-blue-500/10 border border-blue-500/30 rounded-xl p-4">
+          <div className="bg-blue-500/20 dark:bg-blue-500/20 border border-blue-500/40 dark:border-blue-400/40 rounded-xl p-4">
             <div className="flex gap-3">
               <span className="text-2xl">ℹ️</span>
               <div className="flex-1">
-                <h4 className="font-medium text-blue-600 dark:text-blue-400 mb-1">Rate Limits</h4>
-                <ul className="text-sm text-gray-600 dark:text-gray-400 space-y-1">
+                <h4 className="font-semibold text-blue-700 dark:text-blue-300 mb-2">Rate Limits</h4>
+                <ul className="text-sm text-gray-800 dark:text-gray-200 space-y-1 font-medium">
                   <li>• Maximum 10 events per month</li>
                   <li>• 5-minute cooldown between events</li>
                   <li>• Resets on the 1st of each month</li>
