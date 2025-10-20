@@ -1,39 +1,5 @@
 [
   {
-    "id": "user-1760694776922",
-    "title": "test event",
-    "description": "a test event",
-    "suggestedBy": "MyelinReceptorNeo",
-    "createdAt": 1760694776922,
-    "interestedCount": 2,
-    "notInterestedCount": 0,
-    "timeSlots": {
-      "morning": {
-        "votes": 0,
-        "specificTimes": {}
-      },
-      "afternoon": {
-        "votes": 0,
-        "specificTimes": {
-          "12:30": 1
-        }
-      },
-      "evening": {
-        "votes": 1,
-        "specificTimes": {
-          "22:30": 1
-        }
-      },
-      "night": {
-        "votes": 0,
-        "specificTimes": {}
-      }
-    },
-    "eventDate": 1761339600000,
-    "suggestedTime": "18:00",
-    "suggestedTimeSlot": "morning"
-  },
-  {
     "id": "user-1760698129380",
     "title": "test event 2",
     "description": "test event 2",
