@@ -20,6 +20,7 @@ function App() {
   const [currentUsername, setCurrentUsername] = useState<string>('');
   const [showPastEvents, setShowPastEvents] = useState(false);
   const [isUserInteracting, setIsUserInteracting] = useState(false);
+  const [isPageVisible, setIsPageVisible] = useState(true);
 
   useEffect(() => {
     loadData();
@@ -30,6 +31,17 @@ function App() {
       setCurrentUsername(savedUsername);
     }
 
+    // Handle page visibility changes
+    const handleVisibilityChange = () => {
+      setIsPageVisible(!document.hidden);
+      if (!document.hidden) {
+        console.log('📱 Page visible - resuming polls');
+      } else {
+        console.log('🌙 Page hidden - pausing polls');
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
     // Start syncing events every 6 hours
     const turkuCleanup = startEventSync((turkuEvents) => {
       // Apply stored votes to external events before setting state
@@ -37,10 +49,11 @@ function App() {
       setExternalEvents(eventsWithVotes);
     });
 
-    // Poll for event updates every 60 seconds (1 minute)
-    // Only poll when user is not actively interacting
+    // Poll for event updates every 5 minutes (reduced from 60 seconds)
+    // Only poll when user is not actively interacting AND page is visible
     const pollInterval = setInterval(() => {
-      if (!isUserInteracting) {
+      if (!isUserInteracting && isPageVisible) {
+        console.log('🔄 Polling for event updates...');
         Promise.all([
           fetchEvents(),
           fetchTurkuActivities()
@@ -48,21 +61,29 @@ function App() {
           setEvents(eventsData);
           // Apply stored votes to external events
           setExternalEvents(applyStoredVotesToExternalEvents(turkuEvents));
+          console.log('✅ Events updated');
         }).catch((error) => {
           console.error('Error polling events:', error);
         });
+      } else {
+        if (!isPageVisible) {
+          console.log('⏸️ Skipping poll - page not visible');
+        } else {
+          console.log('⏸️ Skipping poll - user is interacting');
+        }
       }
-    }, 60000); // Poll every 60 seconds (1 minute)
+    }, 5 * 60 * 1000); // Poll every 5 minutes
 
     // Detect user interaction to pause polling
     let interactionTimeout: NodeJS.Timeout;
     const handleUserInteraction = () => {
       setIsUserInteracting(true);
       clearTimeout(interactionTimeout);
-      // Resume polling after 3 seconds of no interaction
+      // Resume polling after 10 seconds of no interaction (increased from 3)
       interactionTimeout = setTimeout(() => {
         setIsUserInteracting(false);
-      }, 3000);
+        console.log('✅ Polling resumed');
+      }, 10000);
     };
 
     // Listen for mouse and touch events
@@ -74,11 +95,12 @@ function App() {
       turkuCleanup(); // Cleanup Turku events interval
       clearInterval(pollInterval); // Cleanup polling interval
       clearTimeout(interactionTimeout);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('mousedown', handleUserInteraction);
       window.removeEventListener('touchstart', handleUserInteraction);
       window.removeEventListener('click', handleUserInteraction);
     };
-  }, [isUserInteracting]); // Removed selectedCity from dependencies
+  }, [isUserInteracting, isPageVisible]); // Added isPageVisible to dependencies
 
   const loadData = async () => {
     setLoading(true);
